@@ -1,0 +1,92 @@
+﻿@page "/CreateAccount"
+@using PattersonATM.Misc
+@using PattersonATM.DTO
+@inject IHttpClientFactory ClientFactory
+@inject AppData AppData
+@inject NavigationManager NavigationManager
+
+<PageTitle>Create Account</PageTitle>
+
+
+@if (showError)
+{
+    <ErrorPopup Title="@Error" />
+}
+
+<EditForm Model="@newAccount" OnValidSubmit="Create">
+    <div class="input-align">
+        <label for="cardNum">16 digit Card Number</label>
+        <InputText id="cardNum" @bind-Value="newAccount.CardNum" />
+    </div>
+    <div class="input-align">
+        <label for="pin">4 digit Pin</label>
+        <InputText id="pin" @bind-Value="newAccount.Pin" />
+    </div>
+    <div class="input-align">
+        <label for="accountBal">Balance</label>
+        <InputText id="accountBal" @bind-Value="newAccount.Balance" />
+    </div>
+    <div class="input-align">
+        <label for="mobile">Mobile Number</label>
+        <InputText id="mobile" @bind-Value="newAccount.MobileNum" />
+    </div>
+    <div class="input-align">
+        <label for="username">Card Holder Name</label>
+        <InputText id="username" @bind-Value="newAccount.Name" />
+    </div>
+    <button type="submit">Enter</button>
+</EditForm>
+
+
+@code {
+    private NewWebAccountDTO newAccount = new NewWebAccountDTO();
+    private string Error;
+    private bool showError;
+
+    async Task Create()
+    {
+        try
+        {
+            if (String.IsNullOrEmpty(newAccount.Name) || String.IsNullOrEmpty(newAccount.MobileNum) || String.IsNullOrEmpty(newAccount.Balance)
+                || String.IsNullOrEmpty(newAccount.CardNum) || String.IsNullOrEmpty(newAccount.Pin))
+            {
+                Error = "Missing fields";
+                showError = true;
+                return;
+            }
+            DTO.UserDTO userDTO = new DTO.UserDTO { Name = newAccount.Name, MobileNum = newAccount.MobileNum };
+            DTO.AccountDTO accountDTO = new DTO.AccountDTO { Balance = decimal.Parse(newAccount.Balance), Name = Guid.NewGuid().ToString(), AccountType = "checking" };
+            DTO.NewCardRequest cardRequest = new DTO.NewCardRequest { CardNum = newAccount.CardNum, Pin = newAccount.Pin };
+
+            Error = "";
+            showError = false;
+            //var clientlocal = ClientFactory.CreateClient("LocalApi");
+            var userResponse = await AppData.Client.PostAsJsonAsync("api/User", userDTO);
+            checkError(userResponse);
+            var user = await userResponse.Content.ReadFromJsonAsync<Models.User>();
+            cardRequest.UserId = user.Id;
+            var accountResponse = await AppData.Client.PostAsJsonAsync("api/Account", accountDTO);
+            checkError(accountResponse);
+            var account = await accountResponse.Content.ReadFromJsonAsync<Models.Account>();
+            var cardResponse = await AppData.Client.PostAsJsonAsync("api/Card", cardRequest);
+            checkError(cardResponse);
+            var card = await cardResponse.Content.ReadFromJsonAsync<Models.Card>();
+            var cardAccount = await AppData.Client.PostAsJsonAsync("api/CardAccount", new Models.CardAccount { AccountId = account.Id, CardId = card.Id });
+            NavigationManager.NavigateTo($"/");
+        }
+        catch
+        {
+
+        }
+    }
+
+    void checkError(HttpResponseMessage message)
+    {
+        if (!message.IsSuccessStatusCode)
+        {
+            Error = message.Content.ReadFromJsonAsync<Error>().Result?.Message;
+            showError = true;
+        }
+    }
+}
+

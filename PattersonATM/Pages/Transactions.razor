@@ -1,0 +1,44 @@
+﻿@page "/transactions"
+@using PattersonATM.Models
+@inject AppData AppData
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Transactions</PageTitle>
+
+@if (transactions == null)
+{
+    <p><em>Loading ...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var transaction in transactions)
+            {
+                <tr>
+                    <td>@transaction.Date.ToShortDateString()</td>
+                    <td>@transaction.Type</td>
+                    <td>@transaction.Amount</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Transaction> transactions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var res = await AppData.Client.GetAsync($"api/Transaction?accountId={AppData.CurrentAccountId.ToString()}&limit=5");
+        transactions = await res.Content.ReadFromJsonAsync<List<Transaction>>();
+    }
+}
+

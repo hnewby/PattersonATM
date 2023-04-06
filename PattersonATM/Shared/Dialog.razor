@@ -1,0 +1,35 @@
+﻿@using PattersonATM.Misc
+@using PattersonATM.Models
+@using PattersonATM.DTO
+@inject AppData AppData
+
+<div class="dialog" id="myModal" aria-modal="true" role="dialog">
+    <h1>@Title</h1>
+    <form>
+        <div class="input-align">
+            <input @bind="amount" type="number" min="0" step="any" />
+        </div>
+        <div class="button-align">
+            <button type="button" @onclick="@Ok">Enter</button>
+            <button type="button" @onclick="@Cancel">Cancel</button>
+        </div>
+    </form>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<decimal> OnSubmit { get; set; }
+    private decimal amount;
+
+    private Task Cancel()
+    {
+        return OnClose.InvokeAsync();
+    }
+    private async Task Ok(EventArgs args)
+    {
+        await OnSubmit.InvokeAsync(amount);
+
+    }
+}
+

@@ -1,0 +1,28 @@
+﻿@inherits LayoutComponentBase
+@inject AppData AppData
+@inject NavigationManager NavigationManager
+
+<PageTitle>PattersonATM</PageTitle>
+
+<div class="page">
+
+    <main>
+        <div class="top-row px-4">
+            <button @onclick="Logout">Log out</button>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    void Logout()
+    {
+        AppData.CurrentAccountId = 0;
+        AppData.CurrentCardId = 0;
+        NavigationManager.NavigateTo($"/");
+    }
+}
+

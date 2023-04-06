@@ -1,0 +1,129 @@
+﻿@page "/Account"
+@inject IHttpClientFactory ClientFactory
+@inject AppData AppData
+@using PattersonATM.DTO
+@using PattersonATM.Misc
+@inject NavigationManager NavigationManager
+<PageTitle>Account</PageTitle>
+
+<h2>Account #: @CurrentAccount.AccountNum</h2>
+<h2>Balance: $@CurrentAccount.Balance</h2>
+<div class="quickMenu">
+
+    <button type="button" @onclick="(() => Transact(20))">Quick 20</button>
+    <button type="button" @onclick="(() => Transact(50))">Quick 50</button>
+    <button type="button" @onclick="(() => Transact(100))">Quick 100</button>
+
+
+</div>
+
+
+<button type="button" @onclick="DepositDialog">Deposit</button>
+<button type="button" @onclick="WithdrawDialog">Withdraw</button>
+<button type="button" @onclick="Transactions">Transactions</button>
+
+@if (dialogIsOpen)
+{
+    <Dialog Title=@dialogTitle
+            OnSubmit="@OnDialogSumbit"
+            OnClose="@OnDialogClose">
+    </Dialog>
+}
+
+@if (showError)
+{
+    <ErrorPopup Title="@Error" />
+}
+
+@code {
+
+    private Models.Account? CurrentAccount = new Models.Account();
+    private string dialogTitle;
+    private string dialogError = "";
+    private bool dialogIsOpen = false;
+    private bool isDeposit = false;
+    private string Error;
+    private bool showError;
+    private TransactDTO transactDTO;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var res = await AppData.Client.GetAsync($"api/Account?accountId={AppData.CurrentAccountId.ToString()}");
+            CurrentAccount = await res.Content.ReadFromJsonAsync<Models.Account>();
+        }
+        catch (Exception e)
+        {
+            var mes = e.Message;
+        }
+    }
+
+    private async Task Transact(decimal amount)
+    {
+        transactDTO = new TransactDTO { AccountId = CurrentAccount.Id, Amount = amount, CardId = AppData.CurrentCardId };
+        HttpResponseMessage accountResponse;
+        if (isDeposit)
+        {
+            accountResponse = await AppData.Client.PostAsJsonAsync("api/Account/Deposit", transactDTO);
+        }
+        else
+        {
+            accountResponse = await AppData.Client.PostAsJsonAsync("api/Account/Withdraw", transactDTO);
+        }
+        checkError(accountResponse);
+        await UpdateBalanceAsync();
+    }
+
+    private void DepositDialog()
+    {
+        isDeposit = true;
+        OpenDialog("Deposit");
+    }
+
+    private void WithdrawDialog()
+    {
+        OpenDialog("Withdraw");
+    }
+    public void Transactions()
+    {
+        NavigationManager.NavigateTo($"Transactions");
+    }
+
+    private void OpenDialog(string title)
+    {
+        showError = false;
+        dialogIsOpen = true;
+        dialogTitle = title;
+    }
+
+    private async Task OnDialogSumbit(decimal amount)
+    {
+        Transact(amount);
+        isDeposit = false;
+        dialogIsOpen = false;
+    }
+
+    private async Task OnDialogClose()
+    {
+        dialogIsOpen = false;
+    }
+
+    void checkError(HttpResponseMessage message)
+    {
+        if (!message.IsSuccessStatusCode)
+        {
+            Error = message.Content.ReadFromJsonAsync<Error>().Result?.Message;
+            showError = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UpdateBalanceAsync()
+    {
+        var res = await AppData.Client.GetAsync($"api/Account/Balance?accountId={AppData.CurrentAccountId.ToString()}");
+        CurrentAccount.Balance = await res.Content.ReadFromJsonAsync<decimal>();
+        StateHasChanged();
+    }
+}
+

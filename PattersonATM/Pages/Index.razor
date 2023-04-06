@@ -1,0 +1,52 @@
+﻿@page "/"
+@using PattersonATM.Models
+@using PattersonATM.DTO
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager NavigationManager
+@inject AppData AppData
+
+<PageTitle>Index</PageTitle>
+<h1>PattersonATM</h1>
+
+<EditForm Model="@loginRequest" OnValidSubmit="Login">
+    <div class="input-align">
+        <label for="cardNum">Card Number</label>
+        <InputText id="cardNum" @bind-Value="loginRequest.CardNum" />
+    </div>
+    <div class="input-align">
+        <label for="pin">Pin</label>
+        <InputText id="pin" @bind-Value="loginRequest.Pin" />
+    </div>
+    <div class="button-align">
+        <button type="submit">Enter</button>
+        <button type="button" @onclick="CreateAccount">Create Account</button>
+    </div>
+</EditForm>
+
+@code {
+    private LoginDTO loginRequest = new LoginDTO();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppData.Client = ClientFactory.CreateClient("LocalApi");
+    }
+
+    async Task Login()
+    {
+        var res = await AppData.Client.PostAsJsonAsync("api/ATM", loginRequest);
+        if (res.IsSuccessStatusCode)
+        {
+
+            var cardAccount = await res.Content.ReadFromJsonAsync<CardAccount>();
+            AppData.CurrentCardId = cardAccount.CardId;
+            AppData.CurrentAccountId = cardAccount.AccountId;
+            NavigationManager.NavigateTo($"Account");
+        }
+    }
+
+    async Task CreateAccount()
+    {
+        NavigationManager.NavigateTo($"CreateAccount");
+    }
+}
+
